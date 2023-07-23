@@ -2,52 +2,40 @@ module Year2022.Day2.Main exposing (main, part1, part2)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, a, br, button, div, h1, h2, li, p, span, text, textarea, ul)
+import Html exposing (Html, a, br, button, div, h1, h2, p, span, text, textarea)
 import Html.Attributes exposing (cols, href, placeholder, rows, style, value)
 import Html.Events exposing (onClick, onInput)
-import List exposing (head, sortWith, sum, take)
-import Tuple
+import List exposing (sum)
 import Year2022.Day2.Input exposing (testInp)
 
 
-unwrapList : List (Maybe Int) -> Maybe (List Int)
-unwrapList list =
-    let
-        validInts =
-            List.filterMap identity list
-    in
-    if List.length validInts == List.length list then
-        Just validInts
-
-    else
-        Nothing
-
-
-playOpts : Dict String Int
-playOpts =
+xyz : Dict String Int
+xyz =
     Dict.fromList
-        [ ( "A", 1 ) -- rock
-        , ( "X", 1 )
-        , ( "B", 2 ) -- paper
-        , ( "Y", 2 )
-        , ( "C", 3 ) -- scissors
-        , ( "Z", 3 )
+        [ ( "X", 1 ) -- rock
+        , ( "Y", 2 ) -- paper
+        , ( "Z", 3 ) -- scissors
         ]
 
 
-getGamePts : ( Int, Int ) -> Result String Int
-getGamePts ( a, b ) =
-    if a == b then
-        Ok <| 3 + b
+getPts : ( String, String ) -> Int
+getPts ( a, b ) =
+    if
+        (a == "A" && b == "X")
+            || (a == "B" && b == "Y")
+            || (a == "C" && b == "Z")
+    then
+        3
 
-    else if b < a || (b == 1 && a == 3) then
-        Ok <| 6 + b
-
-    else if b > a || (b == 3 && a == 1) then
-        Ok <| 0 + b
+    else if
+        (a == "A" && b == "Y")
+            || (a == "B" && b == "Z")
+            || (a == "C" && b == "X")
+    then
+        6
 
     else
-        Err "Unreachable comparison"
+        0
 
 
 
@@ -55,31 +43,21 @@ getGamePts ( a, b ) =
 
 
 evalGame : String -> Result String Int
-evalGame row_ =
-    let
-        row =
-            case String.split " " row_ of
-                [] ->
-                    Err "List's length is smaller than 2"
+evalGame row =
+    case String.split " " row of
+        [] ->
+            Err "List's length is smaller than 2"
 
-                [ _ ] ->
-                    Err "List's length is smaller than 2"
+        [ _ ] ->
+            Err "List's length is smaller than 2"
 
-                a_ :: b_ :: _ ->
-                    case ( Dict.get a_ playOpts, Dict.get b_ playOpts ) of
-                        ( Nothing, Nothing ) ->
-                            Err "The key is not inside the dictionary"
+        a :: b :: _ ->
+            case Dict.get b xyz of
+                Nothing ->
+                    Err "The key is not inside the dictionary"
 
-                        ( Just _, Nothing ) ->
-                            Err "The key is not inside the dictionary"
-
-                        ( Nothing, Just _ ) ->
-                            Err "The key is not inside the dictionary"
-
-                        ( Just a, Just b ) ->
-                            Ok ( a, b )
-    in
-    Result.andThen getGamePts row
+                Just pts ->
+                    Ok <| pts + getPts ( a, b )
 
 
 part1 : String -> Result String Int
@@ -103,9 +81,76 @@ part1 inp_ =
         Err "Error when evaluating some games"
 
 
+
+-- takes the row (A-C and X-Z separated by space) and returns the score
+
+
+getPtsPt2 : ( String, String ) -> Int
+getPtsPt2 ( a, b ) =
+    if
+        (a == "A" && b == "X")
+            || (a == "B" && b == "Z")
+            || (a == "C" && b == "Y")
+    then
+        3
+
+    else if
+        (a == "A" && b == "Z")
+            || (a == "B" && b == "Y")
+            || (a == "C" && b == "X")
+    then
+        2
+
+    else
+        1
+
+
+xyzPt2 : Dict String Int
+xyzPt2 =
+    Dict.fromList
+        [ ( "X", 0 ) -- lose
+        , ( "Y", 3 ) -- draw
+        , ( "Z", 6 ) -- win
+        ]
+
+
+evalGamePt2 : String -> Result String Int
+evalGamePt2 row =
+    case String.split " " row of
+        [] ->
+            Err "List's length is smaller than 2"
+
+        [ _ ] ->
+            Err "List's length is smaller than 2"
+
+        a :: b :: _ ->
+            case Dict.get b xyzPt2 of
+                Nothing ->
+                    Err "The key is not inside the dictionary"
+
+                Just pts ->
+                    Ok <| pts + getPtsPt2 ( a, b )
+
+
 part2 : String -> Result String Int
 part2 inp_ =
-    Ok 0
+    let
+        inp =
+            String.replace "\u{000D}" "" inp_
+                |> String.trim
+                |> String.split "\n"
+
+        pts =
+            List.map evalGamePt2 inp
+
+        filteredPts =
+            List.filterMap Result.toMaybe pts
+    in
+    if List.length filteredPts == List.length pts then
+        Ok <| sum filteredPts
+
+    else
+        Err "Error when evaluating some games"
 
 
 
